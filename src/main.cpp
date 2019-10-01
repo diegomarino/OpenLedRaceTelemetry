@@ -23,18 +23,19 @@
  https://twitter.com/openledrace
 */
 #include <Arduino.h>
-//#include <Adafruit_NeoPixel.h>
-#include <NeoPixelBus.h>
-#include <NeoPixelAnimator.h>
+#include <Adafruit_NeoPixel.h>
+//#include <NewTone.h>
+//#include <NeoPixelBus.h>
+//#include <NeoPixelAnimator.h>
 
-#define MAX_LEDS 300     // MAX LEDs actives on strip
+#define MAX_LEDS 300    // MAX LEDs actives on strip
 #define PIN_LED_STRIP A0 // R 500 ohms to DI pin for WS2812 and WS2813, for WS2813 BI pin of first LED to GND  ,  CAP 1000 uF to VCC 5v/GND,power supplie 5V 2A
-#define PIN_PLAYER1 7    // switch player 1 to PIN and GND
-#define PIN_PLAYER2 6    // switch player 2 to PIN and GND
-#define PIN_AUDIO 3      // through CAP 2uf to speaker 8 ohms
+#define PIN_PLAYER1 7   // switch player 1 to PIN and GND
+#define PIN_PLAYER2 6   // switch player 2 to PIN and GND
+#define PIN_AUDIO 3     // through CAP 2uf to speaker 8 ohms
 
-#define COLOR_PLAYER1 track.Color(255, 0, 0) // red - color p1
-#define COLOR_PLAYER2 track.Color(0, 255, 0) // green - color p2
+#define COLOR_PLAYER1 track.Color(0, 255, 0) // green - color p1
+#define COLOR_PLAYER2 track.Color(255, 0, 0) // red - color p2
 
 #define DEF_GRAVITY 127
 
@@ -96,7 +97,7 @@ void reset_race_data()
 
 void start_race()
 {
-  Serial.println("start race");
+    Serial.println("start race");
 
     for (int i = 0; i < TOTAL_LEDS_STRIP; i++)
     {
@@ -104,25 +105,38 @@ void start_race()
     };
 
     track.show();
-    delay(2000);
-    track.setPixelColor(12, track.Color(0, 255, 0));
-    track.setPixelColor(11, track.Color(0, 255, 0));
+    delay(1000);
+    track.setPixelColor(12, track.Color(255, 0, 0));
+    track.setPixelColor(11, track.Color(255, 0, 0));
     track.show();
     tone(PIN_AUDIO, 400);
     delay(2000);
     noTone(PIN_AUDIO);
+    for (int i = 0; i < 12; i++)
+    {
+        track.setPixelColor(i, track.Color(0, 0, 0));
+    };
+
+    track.show();
     track.setPixelColor(12, track.Color(0, 0, 0));
     track.setPixelColor(11, track.Color(0, 0, 0));
     track.setPixelColor(10, track.Color(255, 255, 0));
     track.setPixelColor(9, track.Color(255, 255, 0));
+
     track.show();
     tone(PIN_AUDIO, 600);
     delay(2000);
     noTone(PIN_AUDIO);
+    for (int i = 0; i < 12; i++)
+    {
+        track.setPixelColor(i, track.Color(0, 0, 0));
+    };
+
+    track.show();
     track.setPixelColor(9, track.Color(0, 0, 0));
     track.setPixelColor(10, track.Color(0, 0, 0));
-    track.setPixelColor(8, track.Color(255, 0, 0));
-    track.setPixelColor(7, track.Color(255, 0, 0));
+    track.setPixelColor(8, track.Color(0, 255, 0));
+    track.setPixelColor(7, track.Color(0, 255, 0));
     track.show();
     tone(PIN_AUDIO, 1200);
     delay(2000);
@@ -148,7 +162,6 @@ void finish_game(int player_who_won)
     reset_race_data();
     start_race();
 }
-
 
 void update_players_position()
 {
@@ -202,15 +215,15 @@ void calculate_player2_position_delta()
 
 void set_ramp(byte H, byte ramp_start, byte ramp_center, byte ramp_end) // gets the position of leds for the start, center and end of the ramp -- H seems to be a hardcoded constant to simulate acceleration physics
 {
-  for (int i = 0; i < (ramp_center - ramp_start); i++)
-  {
-    gravity_map[ramp_start + i] = DEF_GRAVITY - i * ((float)H / (ramp_center - ramp_start));
-  };
-  gravity_map[ramp_center] = DEF_GRAVITY;
-  for (int i = 0; i < (ramp_end - ramp_center); i++)
-  {
-    gravity_map[ramp_center + i + 1] = DEF_GRAVITY + H - i * ((float)H / (ramp_end - ramp_center));
-  };
+    for (int i = 0; i < (ramp_center - ramp_start); i++)
+    {
+        gravity_map[ramp_start + i] = DEF_GRAVITY - i * ((float)H / (ramp_center - ramp_start));
+    };
+    gravity_map[ramp_center] = DEF_GRAVITY;
+    for (int i = 0; i < (ramp_end - ramp_center); i++)
+    {
+        gravity_map[ramp_center + i + 1] = DEF_GRAVITY + H - i * ((float)H / (ramp_end - ramp_center));
+    };
 }
 
 void set_loop(byte H, byte a, byte b, byte c)
@@ -227,10 +240,6 @@ void set_loop(byte H, byte a, byte b, byte c)
         gravity_map[b + i + 1] = DEF_GRAVITY + H - i * ((float)H / (c - b));
     };
 }
-
-
-
-
 
 void draw_car1(void)
 {
@@ -338,10 +347,6 @@ void draw_cars()
 
     track.show();
 }
-
-
-
-
 
 void burning1()
 {
@@ -454,11 +459,10 @@ int display_lcd_time()
 }
 */
 
-
 void setup()
 {
 
-  Serial.begin(115200);
+    Serial.begin(115200);
 
     for (int i = 0; i < TOTAL_LEDS_STRIP; i++)
     {
@@ -485,14 +489,13 @@ void setup()
     start_race();
 
     Serial.println("setup ended");
-
 }
 
 void loop()
 {
-Serial.println("-----");
-Serial.println("loopstarts");
-//Serial.println(digitalRead(PIN_PLAYER1));
+    Serial.println("-----");
+    Serial.println("loopstarts");
+    //Serial.println(digitalRead(PIN_PLAYER1));
 
     set_track_base_color();
 
