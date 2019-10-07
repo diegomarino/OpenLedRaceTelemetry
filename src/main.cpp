@@ -24,20 +24,35 @@
 */
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
+#include <U8g2lib.h>
+
+#ifdef U8X8_HAVE_HW_SPI
+#include <SPI.h>
+#endif
+#ifdef U8X8_HAVE_HW_I2C
+#include <Wire.h>
+#endif
+
 //#include <NewTone.h>
 //#include <NeoPixelBus.h>
 //#include <NeoPixelAnimator.h>
 
-#define MAX_LEDS 300    // MAX LEDs actives on strip
+#define MAX_LEDS 300     // MAX LEDs actives on strip
 #define PIN_LED_STRIP A0 // R 500 ohms to DI pin for WS2812 and WS2813, for WS2813 BI pin of first LED to GND  ,  CAP 1000 uF to VCC 5v/GND,power supplie 5V 2A
-#define PIN_PLAYER1 7   // switch player 1 to PIN and GND
-#define PIN_PLAYER2 6   // switch player 2 to PIN and GND
-#define PIN_AUDIO 3     // through CAP 2uf to speaker 8 ohms
+#define PIN_PLAYER1 7    // switch player 1 to PIN and GND
+#define PIN_PLAYER2 6    // switch player 2 to PIN and GND
+#define PIN_AUDIO 3      // through CAP 2uf to speaker 8 ohms
 
 #define COLOR_PLAYER1 track.Color(0, 255, 0) // green - color p1
 #define COLOR_PLAYER2 track.Color(255, 0, 0) // red - color p2
 
+#define LCD_X = 128;
+#define LCD_Y = 64;
+
 #define DEF_GRAVITY 127
+//U8G2_NULL u8g2(U8G2_R0);	// null device, a 8x8 pixel display which does nothing
+//U8GLIB_ST7920_128X64 u8g(13, 11, 12, U8G_PIN_NONE);
+U8G2_ST7920_128X64_F_SW_SPI u8g2(U8G2_R0, /* clock=*/13, /* data=*/11, /* CS=*/12, /* reset=*/8);
 
 int TOTAL_LEDS_STRIP = MAX_LEDS; // total amount of leds on track
 int TBEEP = 3;                   // # of times a beep is played
@@ -68,6 +83,10 @@ byte flag_sw1 = 0;
 byte flag_sw2 = 0;
 byte draworder = 0;
 
+
+
+unsigned long timelap_player1 = 0;
+unsigned long timelap_player2 = 0;
 unsigned long timestamp = 0;
 
 Adafruit_NeoPixel track = Adafruit_NeoPixel(MAX_LEDS, PIN_LED_STRIP, NEO_GRB + NEO_KHZ800);
@@ -105,7 +124,7 @@ void start_race()
     };
 
     track.show();
-    delay(1000);
+       delay(1000);
     track.setPixelColor(12, track.Color(255, 0, 0));
     track.setPixelColor(11, track.Color(255, 0, 0));
     track.show();
@@ -142,7 +161,7 @@ void start_race()
     delay(2000);
     noTone(PIN_AUDIO);
 
-    timestamp = 0;
+    timestamp = millis();
 };
 
 void finish_game(int player_who_won)
@@ -290,6 +309,7 @@ void check_players_new_lap()
     if (dist1 > TOTAL_LEDS_STRIP * laps_player1)
     {
         laps_player1++;
+        timelap_player1 = millis();
         tone(PIN_AUDIO, 600);
         TBEEP = 2;
     }
@@ -297,6 +317,7 @@ void check_players_new_lap()
     if (dist2 > TOTAL_LEDS_STRIP * laps_player2)
     {
         laps_player2++;
+        timelap_player2 = millis();
         tone(PIN_AUDIO, 700);
         TBEEP = 2;
     }
@@ -459,6 +480,115 @@ int display_lcd_time()
 }
 */
 
+void update_lcd()
+{
+
+// I'll need a clean function to generate x/y
+
+
+    int lcd_line1_y = 11; // PLAYER NAMES
+    int lcd_line2_y = 25; // LAPS
+    int lcd_line3_y = 36; // ELAPSED TIME
+    int lcd_line4_y = 47; // LAP TIME
+    int lcd_line5_y = 58; // PERCENTAGE
+
+    int lcd_line1_p1x = 10;
+    int lcd_line2_p1x = 5;
+    int lcd_line3_p1x = 5;
+    int lcd_line4_p1x = 5;
+    int lcd_line5_p1x = 5;
+
+    int lcd_line1_p2x = 75;
+    int lcd_line2_p2x = 70;
+    int lcd_line3_p2x = 70;
+    int lcd_line4_p2x = 70;
+    int lcd_line5_p2x = 70;
+
+    u8g2.clearBuffer();               // clear the internal memory
+    u8g2.setFont(u8g2_font_t0_11_mf); // choose a suitable font
+    u8g2.drawFrame(0, 0, 64, 64);  // left frame
+    u8g2.drawFrame(64, 0, 64, 64); // right frame
+    u8g2.drawLine(12, 13, 52, 13);
+    u8g2.drawLine(78, 13, 116, 13);
+
+    /* PRINT PLAYERS */
+    u8g2.drawStr(lcd_line1_p1x, lcd_line1_y, "PLAYER 1"); // write something to the internal memory
+    u8g2.drawStr(lcd_line1_p2x, lcd_line1_y, "PLAYER 2"); // write something to the internal memory
+
+    u8g2.setFont(u8g2_font_lucasfont_alternate_tf); // choose a suitable font
+
+
+
+    /* PRINT LAPS */
+
+    u8g2.setCursor(lcd_line2_p1x,lcd_line2_y);
+    u8g2.print("Laps: ");
+    u8g2.print(laps_player1);
+    u8g2.print("/");
+    u8g2.print(laps_max);
+
+    u8g2.setCursor(lcd_line2_p2x,lcd_line2_y);
+    u8g2.print("Laps: ");
+    u8g2.print(laps_player2);
+    u8g2.print("/");
+    u8g2.print(laps_max);
+
+   /* PRINT ELAPSED TIME */
+
+    unsigned long CurrentTime = millis();
+    unsigned long ElapsedTime = CurrentTime - timestamp;
+    int secs = ElapsedTime / 1000;
+    int milisecs = (ElapsedTime % 1000)/10;
+
+
+    u8g2.setCursor(lcd_line3_p1x,lcd_line3_y);
+    u8g2.print("Time: ");
+    u8g2.print(secs);
+    u8g2.print(":");
+    u8g2.print(milisecs);
+
+    u8g2.setCursor(lcd_line3_p2x,lcd_line3_y);
+    u8g2.print("Time: ");
+    u8g2.print(secs);
+    u8g2.print(":");
+    u8g2.print(milisecs);
+
+   /* PRINT LAP TIME */
+
+     CurrentTime = millis();
+
+     unsigned long ElapsedLapTime = CurrentTime - timelap_player1;
+     secs = ElapsedLapTime / 1000;
+     milisecs = (ElapsedLapTime % 1000)/10;
+    u8g2.setCursor(lcd_line4_p1x,lcd_line4_y);
+    u8g2.print("Lap: ");
+    u8g2.print(secs);
+    u8g2.print(":");
+    u8g2.print(milisecs);
+
+     ElapsedLapTime = CurrentTime - timelap_player2;
+     secs = ElapsedLapTime / 1000;
+     milisecs = (ElapsedLapTime % 1000)/10;
+    u8g2.setCursor(lcd_line4_p2x,lcd_line4_y);
+    u8g2.print("Lap: ");
+    u8g2.print(secs);
+    u8g2.print(":");
+    u8g2.print(milisecs);
+
+   /* PRINT COMPLETED PERCENTAGE */
+
+    u8g2.setCursor(lcd_line5_p1x,lcd_line5_y);
+    u8g2.print("%: ");
+    u8g2.print((dist1*100)/(TOTAL_LEDS_STRIP*laps_max));
+
+    u8g2.setCursor(lcd_line5_p2x,lcd_line5_y);
+    u8g2.print("%: ");
+    u8g2.print((dist2*100)/(TOTAL_LEDS_STRIP*laps_max));
+
+
+    u8g2.sendBuffer();             // transfer internal memory to the display
+}
+
 void setup()
 {
 
@@ -470,6 +600,10 @@ void setup()
     };
 
     track.begin();
+
+    u8g2.begin();
+    u8g2.setFont(u8g_font_8x13);
+    u8g2.setColorIndex(1);
 
     pinMode(PIN_PLAYER1, INPUT_PULLUP);
     pinMode(PIN_PLAYER2, INPUT_PULLUP);
@@ -493,10 +627,7 @@ void setup()
 
 void loop()
 {
-    Serial.println("-----");
-    Serial.println("loopstarts");
-    //Serial.println(digitalRead(PIN_PLAYER1));
-
+    Serial.println("---loop---");
     set_track_base_color();
 
     calculate_player1_position_delta();
@@ -512,6 +643,8 @@ void loop()
     check_for_finished_race();
 
     draw_cars();
+
+    update_lcd();
 
     delay(DELAY_MS);
 
